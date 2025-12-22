@@ -1,208 +1,202 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cloudflare AI Chat</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f7f7f8;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-    #chat {
-      background-color: #ffffff;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      width: 100%;
-      max-width: 600px;
-      padding: 20px;
-    }
-    h2 {
-      text-align: center;
-      font-size: 24px;
-      margin-bottom: 20px;
-    }
-    #messages {
-      border: 1px solid #ccc;
-      background-color: #f9f9f9;
-      height: 400px;
-      padding: 15px;
-      margin-bottom: 20px;
-      overflow-y: auto;
-      border-radius: 8px;
-    }
-    .message {
-      margin-bottom: 15px;
-      display: flex;
-      align-items: flex-start;
-      line-height: 1.6;
-    }
-    .message .sender {
-      font-weight: bold;
-    }
-    .message .text {
-      margin-left: 10px;
-    }
-    .message .sender.ai {
-      color: #4CAF50;
-    }
-    .message .sender.user {
-      color: #007bff;
-    }
-    .message img {
-      border-radius: 50%;
-      width: 35px;
-      height: 35px;
-    }
-    #inputForm {
-      display: flex;
-      gap: 10px;
-      justify-content: space-between;
-    }
-    #userInput {
-      flex: 1;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-    }
-    #sendBtn {
-      padding: 10px 15px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    #sendBtn:hover {
-      background-color: #45a049;
-    }
-    select {
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-    }
-    .typing {
-      display: flex;
-      align-items: center;
-      margin-top: 10px;
-    }
-    .typing span {
-      animation: typing 1.5s infinite;
-    }
-    @keyframes typing {
-      0% { content: ""; }
-      50% { content: "."; }
-      100% { content: ".."; }
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AI Chat</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f7f7f8;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+
+#chat {
+  background: white;
+  width: 100%;
+  max-width: 600px;
+  height: 90vh;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+}
+
+h2 {
+  text-align: center;
+  padding: 12px;
+  margin: 0;
+  border-bottom: 1px solid #eee;
+}
+
+#messages {
+  flex: 1;
+  padding: 15px;
+  overflow-y: auto;
+}
+
+.message {
+  display: flex;
+  margin-bottom: 14px;
+}
+
+.message img {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+}
+
+.text {
+  margin-left: 10px;
+  max-width: 80%;
+}
+
+.sender {
+  font-weight: bold;
+}
+
+.user { color: #007bff; }
+.ai { color: #2e7d32; }
+
+#typing {
+  padding: 10px;
+  font-style: italic;
+  display: none;
+}
+
+#inputForm {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid #eee;
+}
+
+#userInput {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+button {
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button:disabled {
+  background: #9ccc9c;
+  cursor: not-allowed;
+}
+</style>
 </head>
+
 <body>
-  <div id="chat">
-    <h2>AI Chat</h2>
-    <div>
-      <label for="modelSelect">Choose AI model:</label>
-      <select id="modelSelect"></select>
-    </div>
-    <div id="messages"></div>
-    <div id="typingIndicator" class="typing" style="display: none;">
-      <img src="https://www.w3schools.com/howto/img_avatar.png" alt="AI Avatar">
-      <span>AI is typing</span>
-    </div>
-    <form id="inputForm">
-      <input type="text" id="userInput" placeholder="Type your message" required />
-      <button type="submit" id="sendBtn">Send</button>
-    </form>
-  </div>
+<div id="chat">
+  <h2>AI Chat</h2>
+  <div id="messages"></div>
+  <div id="typing">AI is typing...</div>
 
-  <script>
-    const MODELS = [
-      "smart-turn-v2", "gpt-oss-120b", "bge-m3", "distilbert-sst-2-int8",
-      "llama-3-8b-instruct", "llama-3.2-3b-instruct", "llama-guard-3-8b",
-      "qwen3-embedding-0.6b", "llama-2-7b-chat-fp16", "mistral-7b-instruct-v0.1",
-      "melotts", "aura-2-es", "whisper", "plamo-embedding-1b", "deepseek-r1-distill-qwen-32b",
-      "flux", "nova-3", "flux-1-schnell", "llama-2-7b-chat-int8", "llama-3.1-8b-instruct-fp8",
-      "llama-3.2-1b-instruct", "resnet-50", "llama-3.3-70b-instruct-fp8-fast", "granite-4.0-h-micro",
-      "dreamshaper-8-lcm", "phoenix-1.0", "m2m100-1.2b", "indictrans2-en-indic-1B",
-      "bge-small-en-v1.5", "qwen2.5-coder-32b-instruct", "bge-base-en-v1.5",
-      "gemma-sea-lion-v4-27b-it", "qwen3-30b-a3b-fp8", "llama-3.1-8b-instruct-awq",
-      "flux-2-dev", "mistral-small-3.1-24b-instruct", "llama-3-8b-instruct-awq",
-      "llama-3.2-11b-vision-instruct", "whisper-large-v3-turbo", "aura-1",
-      "gpt-oss-20b", "embeddinggemma-300m", "bge-reranker-base", "lucid-origin",
-      "llama-4-scout-17b-16e-instruct", "gemma-3-12b-it", "qwq-32b", "bge-large-en-v1.5",
-      "aura-2-en", "qwen1.5-0.5b-chat", "gemma-2b-it-lora", "starling-lm-7b-beta",
-      "llamaguard-7b-awq", "neural-chat-7b-v3-1-awq", "mistral-7b-instruct-v0.2-lora",
-      "tinyllama-1.1b-chat-v1.0", "mistral-7b-instruct-v0.2", "una-cybertron-7b-v2-bf16",
-      "llava-1.5-7b-hf", "stable-diffusion-v1-5-inpainting", "discolm-german-7b-v1-awq",
-      "mistral-7b-instruct-v0.1-awq", "qwen1.5-7b-chat-awq", "llama-2-13b-chat-awq",
-      "stable-diffusion-xl-lightning", "deepseek-coder-6.7b-base-awq", "llama-2-7b-chat-hf-lora",
-      "stable-diffusion-xl-base-1.0", "openhermes-2.5-mistral-7b-awq", "deepseek-coder-6.7b-instruct-awq",
-      "deepseek-math-7b-instruct", "falcon-7b-instruct", "hermes-2-pro-mistral-7b",
-      "uform-gen2-qwen-500m", "zephyr-7b-beta-awq", "gemma-7b-it-lora", "qwen1.5-1.8b-chat",
-      "whisper-tiny-en", "sqlcoder-7b-2", "phi-2", "bart-large-cnn", "stable-diffusion-v1-5-img2img",
-      "gemma-7b-it", "qwen1.5-14b-chat-awq", "openchat-3.5-0106"
-    ];
+  <form id="inputForm">
+    <input id="userInput" placeholder="Type a message..." required />
+    <button id="sendBtn">Send</button>
+  </form>
+</div>
 
-    const modelSelectEl = document.getElementById("modelSelect");
-    MODELS.forEach(m => {
-      const opt = document.createElement("option");
-      opt.value = m;
-      opt.textContent = m;
-      modelSelectEl.appendChild(opt);
+<script>
+const ENDPOINT = "https://ai.abdulmmm556.workers.dev";
+const messages = document.getElementById("messages");
+const typing = document.getElementById("typing");
+const form = document.getElementById("inputForm");
+const input = document.getElementById("userInput");
+const btn = document.getElementById("sendBtn");
+
+let lastRequestTime = 0;
+const RATE_LIMIT_MS = 3000; // 1 request every 3 seconds
+
+function addMessage(sender, text, cls) {
+  const div = document.createElement("div");
+  div.className = "message";
+  div.innerHTML = `
+    <img src="https://www.w3schools.com/howto/img_avatar${cls==="ai"?"2":""}.png">
+    <div class="text">
+      <span class="sender ${cls}">${sender}:</span> ${text}
+    </div>
+  `;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const now = Date.now();
+  if (now - lastRequestTime < RATE_LIMIT_MS) {
+    addMessage("System", "Please wait before sending again.", "ai");
+    return;
+  }
+  lastRequestTime = now;
+
+  const text = input.value.trim();
+  if (!text) return;
+
+  addMessage("You", text, "user");
+  input.value = "";
+  btn.disabled = true;
+  typing.style.display = "block";
+
+  try {
+    const res = await fetch(ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: text })
     });
 
-    const messagesEl = document.getElementById("messages");
-    const inputForm = document.getElementById("inputForm");
-    const userInput = document.getElementById("userInput");
-    const typingIndicator = document.getElementById("typingIndicator");
+    const data = await res.json();
 
-    inputForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const text = userInput.value.trim();
-      if (!text) return;
-
-      appendMessage("You", text, "user");
-      userInput.value = "";
-
-      typingIndicator.style.display = "flex";  // Show typing indicator
-
-      const model = modelSelectEl.value;
-
-      try {
-        const res = await fetch("https://ai.abdulmmm556.workers.dev/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: text, model })
-        });
-        const data = await res.json();
-        appendMessage(model, data.response || "No response", "ai");
-      } catch (err) {
-        appendMessage("Error", err.message, "ai");
-      } finally {
-        typingIndicator.style.display = "none"; // Hide typing indicator after response
-      }
-    });
-
-    function appendMessage(sender, text, senderClass) {
-      const div = document.createElement("div");
-      div.classList.add("message");
-      
-      const senderImage = senderClass === "user" ? 
-        "https://www.w3schools.com/howto/img_avatar.png" : 
-        "https://www.w3schools.com/howto/img_avatar2.png"; // Replace with real avatars
-      div.innerHTML = `
-        <img src="${senderImage}" alt="${sender}">
-        <div class="text">
-          <span class="sender ${senderClass}">${sender}:</span> ${text}
-        </div>
-      `;
-      messagesEl.appendChild(div);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+    if (data.error) {
+      addMessage("Error", data.error, "ai");
+    } else {
+      streamText("AI", data.response);
     }
-  </script>
+
+  } catch (err) {
+    addMessage("Error", err.message, "ai");
+  } finally {
+    typing.style.display = "none";
+    btn.disabled = false;
+  }
+});
+
+function streamText(sender, text) {
+  let i = 0;
+  const div = document.createElement("div");
+  div.className = "message";
+  div.innerHTML = `
+    <img src="https://www.w3schools.com/howto/img_avatar2.png">
+    <div class="text">
+      <span class="sender ai">${sender}:</span>
+      <span id="stream"></span>
+    </div>
+  `;
+  messages.appendChild(div);
+  const span = div.querySelector("#stream");
+
+  const interval = setInterval(() => {
+    span.textContent += text[i];
+    i++;
+    messages.scrollTop = messages.scrollHeight;
+    if (i >= text.length) clearInterval(interval);
+  }, 15);
+}
+</script>
 </body>
 </html>
