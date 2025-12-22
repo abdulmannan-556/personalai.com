@@ -119,8 +119,9 @@ const form = document.getElementById("inputForm");
 const input = document.getElementById("userInput");
 const btn = document.getElementById("sendBtn");
 
+// Rate limiting to prevent spam
 let lastRequestTime = 0;
-const RATE_LIMIT_MS = 3000; // 1 request every 3 seconds
+const RATE_LIMIT_MS = 3000; 
 
 function addMessage(sender, text, cls) {
   const div = document.createElement("div");
@@ -160,12 +161,14 @@ form.addEventListener("submit", async (e) => {
       body: JSON.stringify({ prompt: text })
     });
 
+    if (!res.ok) throw new Error("Server returned " + res.status);
+
     const data = await res.json();
 
     if (data.error) {
       addMessage("Error", data.error, "ai");
     } else {
-      streamText("AI", data.response);
+      streamText("AI", data.response || "No response");
     }
 
   } catch (err) {
@@ -176,6 +179,7 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
+// Smooth typing effect
 function streamText(sender, text) {
   let i = 0;
   const div = document.createElement("div");
@@ -191,10 +195,13 @@ function streamText(sender, text) {
   const span = div.querySelector("#stream");
 
   const interval = setInterval(() => {
-    span.textContent += text[i];
-    i++;
-    messages.scrollTop = messages.scrollHeight;
-    if (i >= text.length) clearInterval(interval);
+    if (i < text.length) {
+      span.textContent += text[i];
+      i++;
+      messages.scrollTop = messages.scrollHeight;
+    } else {
+      clearInterval(interval);
+    }
   }, 15);
 }
 </script>
