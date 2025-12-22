@@ -1,209 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>AI Chat</title>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Personal AI Chat with Smart File Summarization</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.10.111/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
-body {
-  font-family: Arial, sans-serif;
-  background: #f7f7f8;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  margin: 0;
-}
-
-#chat {
-  background: white;
-  width: 100%;
-  max-width: 600px;
-  height: 90vh;
-  border-radius: 12px;
-  box-shadow: 0 5px 20px rgba(0,0,0,0.15);
-  display: flex;
-  flex-direction: column;
-}
-
-h2 {
-  text-align: center;
-  padding: 12px;
-  margin: 0;
-  border-bottom: 1px solid #eee;
-}
-
-#messages {
-  flex: 1;
-  padding: 15px;
-  overflow-y: auto;
-}
-
-.message {
-  display: flex;
-  margin-bottom: 14px;
-}
-
-.message img {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-}
-
-.text {
-  margin-left: 10px;
-  max-width: 80%;
-}
-
-.sender {
-  font-weight: bold;
-}
-
-.user { color: #007bff; }
-.ai { color: #2e7d32; }
-
-#typing {
-  padding: 10px;
-  font-style: italic;
-  display: none;
-}
-
-#inputForm {
-  display: flex;
-  gap: 8px;
-  padding: 12px;
-  border-top: 1px solid #eee;
-}
-
-#userInput {
-  flex: 1;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-}
-
-button {
-  background: #4caf50;
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-button:disabled {
-  background: #9ccc9c;
-  cursor: not-allowed;
-}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,sans-serif;background:#f7f7f8;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:10px;transition:background 0.3s,color 0.3s;}
+body.dark{background:#1e1e1e;color:#fff;}
+.chat-container{background:#fff;width:100%;max-width:600px;height:80vh;display:flex;flex-direction:column;border-radius:10px;box-shadow:0 4px 15px rgba(0,0,0,0.1);overflow:hidden;transition:background 0.3s,color 0.3s;}
+body.dark .chat-container{background:#2c2c2c;color:#fff;box-shadow:0 4px 15px rgba(255,255,255,0.05);}
+.messages{flex:1;padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;}
+.message{padding:10px 15px;border-radius:15px;max-width:80%;word-wrap:break-word;white-space:pre-wrap;}
+.user{background-color:#0084ff;color:#fff;align-self:flex-end;border-bottom-right-radius:0;}
+body.dark .user{background-color:#005bb5;}
+.ai{background-color:#e5e5ea;color:#000;align-self:flex-start;border-bottom-left-radius:0;position:relative;}
+body.dark .ai{background-color:#3a3a3a;color:#fff;}
+.typing{display:inline-block;width:10px;height:10px;margin-left:2px;border-radius:50%;background-color:#555;animation:blink 1s infinite;}
+.typing:nth-child(2){animation-delay:0.2s;}
+.typing:nth-child(3){animation-delay:0.4s;}
+@keyframes blink{0%,80%,100%{opacity:0;}40%{opacity:1;}}
+.input-container{display:flex;border-top:1px solid #ddd;}
+body.dark .input-container{border-top:1px solid #555;}
+input[type=text]{flex:1;padding:15px;border:none;outline:none;font-size:16px;background:#fff;color:#000;transition:background 0.3s,color 0.3s;}
+body.dark input[type=text]{background:#3a3a3a;color:#fff;}
+button,.file-btn,#modeToggle{padding:15px 20px;border:none;background-color:#0084ff;color:#fff;font-size:16px;cursor:pointer;transition:background 0.3s;margin-left:2px;}
+button:hover,.file-btn:hover,#modeToggle:hover{background-color:#006bbf;}
+@media(max-width:600px){.chat-container{height:90vh;}}
 </style>
 </head>
-
 <body>
-<div id="chat">
-  <h2>AI Chat</h2>
-  <div id="messages"></div>
-  <div id="typing">AI is typing...</div>
 
-  <form id="inputForm">
-    <input id="userInput" placeholder="Type a message..." required />
-    <button id="sendBtn">Send</button>
-  </form>
+<div class="chat-container">
+  <div class="messages" id="messages"></div>
+  <div class="input-container">
+    <input type="text" id="userInput" placeholder="Type a message...">
+    <button onclick="sendMessage()">Send</button>
+    <input type="file" id="fileInput" style="display:none;" onchange="uploadFile()">
+    <button class="file-btn" onclick="fileInput.click()">Upload File</button>
+    <button id="modeToggle" onclick="toggleMode()">Dark/Light</button>
+  </div>
 </div>
 
 <script>
-const ENDPOINT = "https://ai.abdulmmm556.workers.dev";
-const messages = document.getElementById("messages");
-const typing = document.getElementById("typing");
-const form = document.getElementById("inputForm");
-const input = document.getElementById("userInput");
-const btn = document.getElementById("sendBtn");
+const messagesContainer=document.getElementById('messages');
+const inputField=document.getElementById('userInput');
+const fileInput=document.getElementById('fileInput');
+const workerUrl='YOUR_WORKER_URL_HERE'; // Replace with your deployed Worker URL
 
-// Rate limiting to prevent spam
-let lastRequestTime = 0;
-const RATE_LIMIT_MS = 3000; 
+function toggleMode(){document.body.classList.toggle('dark');}
+function appendMessage(msg,type){const e=document.createElement('div');e.className=`message ${type}`;e.textContent=msg;messagesContainer.appendChild(e);messagesContainer.scrollTop=messagesContainer.scrollHeight;return e;}
+function showTyping(el){el.innerHTML='';for(let i=0;i<3;i++){const dot=document.createElement('span');dot.className='typing';el.appendChild(dot);}messagesContainer.scrollTop=messagesContainer.scrollHeight;}
+function typeMessage(el,text){el.innerHTML='';let i=0;const interval=setInterval(()=>{el.textContent+=text.charAt(i);i++;messagesContainer.scrollTop=messagesContainer.scrollHeight;if(i>=text.length)clearInterval(interval);},20);}
 
-function addMessage(sender, text, cls) {
-  const div = document.createElement("div");
-  div.className = "message";
-  div.innerHTML = `
-    <img src="https://www.w3schools.com/howto/img_avatar${cls==="ai"?"2":""}.png">
-    <div class="text">
-      <span class="sender ${cls}">${sender}:</span> ${text}
-    </div>
-  `;
-  messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
+async function sendMessage(){
+  const userMessage=inputField.value.trim();
+  if(!userMessage)return;
+  appendMessage(userMessage,'user');
+  inputField.value='';
+  const aiDiv=appendMessage('','ai');
+  showTyping(aiDiv);
+
+  try{
+    const resp=await fetch(workerUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:"user",content:userMessage}]})});
+    const data=await resp.json();
+    typeMessage(aiDiv,data.choices[0].message.content);
+  }catch(err){aiDiv.innerHTML="Error: "+err.message;}
 }
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
+// File upload
+async function uploadFile(){
+  const file=fileInput.files[0];
+  if(!file)return;
+  appendMessage(`Uploaded file: ${file.name}`,'user');personalai.abdulmmm556.workers.dev
+personalai.abdulmmm556.workers.dev
 
-  const now = Date.now();
-  if (now - lastRequestTime < RATE_LIMIT_MS) {
-    addMessage("System", "Please wait before sending again.", "ai");
-    return;
-  }
-  lastRequestTime = now;
+  const aiDiv=appendMessage('','ai');showTyping(aiDiv);
 
-  const text = input.value.trim();
-  if (!text) return;
+  try{
+    let text='';
+    if(file.name.endsWith('.pdf')) text=await extractPDF(file);
+    else if(file.name.endsWith('.csv')) text=await file.text();
+    else if(file.name.endsWith('.docx')) text=await extractDOCX(file);
+    else text=await file.text();
 
-  addMessage("You", text, "user");
-  input.value = "";
-  btn.disabled = true;
-  typing.style.display = "block";
+    // Optional: summarize if large
+    if(text.length>3000) text=`Please summarize the following content before answering:\n${text}`;
 
-  try {
-    const res = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: text })
-    });
-
-    if (!res.ok) throw new Error("Server returned " + res.status);
-
-    const data = await res.json();
-
-    if (data.error) {
-      addMessage("Error", data.error, "ai");
-    } else {
-      streamText("AI", data.response || "No response");
-    }
-
-  } catch (err) {
-    addMessage("Error", err.message, "ai");
-  } finally {
-    typing.style.display = "none";
-    btn.disabled = false;
-  }
-});
-
-// Smooth typing effect
-function streamText(sender, text) {
-  let i = 0;
-  const div = document.createElement("div");
-  div.className = "message";
-  div.innerHTML = `
-    <img src="https://www.w3schools.com/howto/img_avatar2.png">
-    <div class="text">
-      <span class="sender ai">${sender}:</span>
-      <span id="stream"></span>
-    </div>
-  `;
-  messages.appendChild(div);
-  const span = div.querySelector("#stream");
-
-  const interval = setInterval(() => {
-    if (i < text.length) {
-      span.textContent += text[i];
-      i++;
-      messages.scrollTop = messages.scrollHeight;
-    } else {
-      clearInterval(interval);
-    }
-  }, 15);
+    const resp=await fetch(workerUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:"user",content:text}]})});
+    const data=await resp.json();
+    typeMessage(aiDiv,data.choices[0].message.content);
+  }catch(err){aiDiv.innerHTML="Error: "+err.message;}
 }
+
+async function extractPDF(file){
+  const arrayBuffer=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument(arrayBuffer).promise;
+  let text='';
+  for(let i=1;i<=pdf.numPages;i++){const page=await pdf.getPage(i);const content=await page.getTextContent();text+=content.items.map(item=>item.str).join(' ')+'\n';}
+  return text;
+}
+
+async function extractDOCX(file){
+  const zip=await JSZip.loadAsync(file);
+  const doc=await zip.file("word/document.xml").async("string");
+  return doc.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+}
+
+inputField.addEventListener('keydown',e=>{if(e.key==='Enter')sendMessage();});
 </script>
+
 </body>
 </html>
