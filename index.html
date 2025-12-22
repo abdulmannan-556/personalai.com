@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Personal AI Chat with Smart File Summarization</title>
+<title>Personal AI Chat</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.10.111/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
@@ -48,7 +48,9 @@ button:hover,.file-btn:hover,#modeToggle:hover{background-color:#006bbf;}
 const messagesContainer=document.getElementById('messages');
 const inputField=document.getElementById('userInput');
 const fileInput=document.getElementById('fileInput');
-const workerUrl='YOUR_WORKER_URL_HERE'; // Replace with your deployed Worker URL
+
+// Your Cloudflare Worker URL
+const workerUrl = 'https://personalai.abdulmmm556.workers.dev/';
 
 function toggleMode(){document.body.classList.toggle('dark');}
 function appendMessage(msg,type){const e=document.createElement('div');e.className=`message ${type}`;e.textContent=msg;messagesContainer.appendChild(e);messagesContainer.scrollTop=messagesContainer.scrollHeight;return e;}
@@ -60,23 +62,24 @@ async function sendMessage(){
   if(!userMessage)return;
   appendMessage(userMessage,'user');
   inputField.value='';
-  const aiDiv=appendMessage('','ai');
-  showTyping(aiDiv);
+  const aiDiv=appendMessage('','ai');showTyping(aiDiv);
 
   try{
-    const resp=await fetch(workerUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:"user",content:userMessage}]})});
+    const resp=await fetch(workerUrl,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:[{role:"user",content:userMessage}]}),
+      mode:'cors'
+    });
     const data=await resp.json();
     typeMessage(aiDiv,data.choices[0].message.content);
   }catch(err){aiDiv.innerHTML="Error: "+err.message;}
 }
 
-// File upload
 async function uploadFile(){
   const file=fileInput.files[0];
   if(!file)return;
-  appendMessage(`Uploaded file: ${file.name}`,'user');https://https://personalai.abdulmmm556.workers.dev//
-https://https://personalai.abdulmmm556.workers.dev//
-
+  appendMessage(`Uploaded file: ${file.name}`,'user');
   const aiDiv=appendMessage('','ai');showTyping(aiDiv);
 
   try{
@@ -86,10 +89,14 @@ https://https://personalai.abdulmmm556.workers.dev//
     else if(file.name.endsWith('.docx')) text=await extractDOCX(file);
     else text=await file.text();
 
-    // Optional: summarize if large
-    if(text.length>3000) text=`Please summarize the following content before answering:\n${text}`;
+    if(text.length>3000) text=`Please summarize this content before answering:\n${text}`;
 
-    const resp=await fetch(workerUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:"user",content:text}]})});
+    const resp=await fetch(workerUrl,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:[{role:"user",content:text}]}),
+      mode:'cors'
+    });
     const data=await resp.json();
     typeMessage(aiDiv,data.choices[0].message.content);
   }catch(err){aiDiv.innerHTML="Error: "+err.message;}
