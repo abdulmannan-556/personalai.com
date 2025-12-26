@@ -1,104 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Personal AI</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-<style>
-:root {
-  --bg:#f4f4f4; --card:#fff; --text:#000; --user:#007bff; --ai:#e5e5e5;
-}
-body.dark {
-  --bg:#121212; --card:#1e1e1e; --text:#fff; --ai:#2a2a2a;
-}
-body {
-  margin:0; font-family:Arial,sans-serif;
-  background:var(--bg); color:var(--text);
-  display:flex; justify-content:center; height:100vh;
-}
-.chat {
-  width:100%; max-width:520px; height:95vh;
-  background:var(--card); border-radius:12px;
-  display:flex; flex-direction:column; overflow:hidden;
-}
-.messages { flex:1; padding:12px; overflow-y:auto; }
-.msg { padding:10px; margin:6px 0; border-radius:10px; max-width:85%; }
-.user { background:var(--user); color:#fff; align-self:flex-end; }
-.ai { background:var(--ai); align-self:flex-start; }
-.controls { display:flex; gap:6px; padding:10px; flex-wrap:wrap; }
-input, button {
-  padding:10px; border-radius:6px; border:none;
-}
-input[type=text] { flex:1; }
-</style>
+  <meta charset="UTF-8" />
+  <title>Personal AI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-<div class="chat">
-  <div class="messages" id="messages"></div>
-  <div class="controls">
-    <input id="input" type="text" placeholder="Ask anything…" />
-    <input id="file" type="file" />
-    <input id="image" type="file" accept="image/*" />
-    <button onclick="send()">Send</button>
-    <button onclick="toggle()">🌙</button>
+  <div class="chat">
+    <div class="messages" id="messages"></div>
+
+    <div class="controls">
+      <input id="input" type="text" placeholder="Ask anything..." />
+      <input id="file" type="file" />
+      <input id="image" type="file" accept="image/*" />
+      <button id="send">Send</button>
+      <button id="toggle">🌙</button>
+    </div>
   </div>
-</div>
 
-<script>
-const workerUrl = "https://YOUR-WORKER.workers.dev";
-let history = [];
-
-function add(text, cls) {
-  const d=document.createElement("div");
-  d.className="msg "+cls;
-  d.textContent=text;
-  document.getElementById("messages").appendChild(d);
-  d.scrollIntoView();
-  return d;
-}
-
-async function send() {
-  const input=document.getElementById("input");
-  const file=document.getElementById("file").files[0];
-  const image=document.getElementById("image").files[0];
-  let content=input.value.trim();
-
-  if (!content && !file && !image) return;
-
-  if (file) {
-    content += "\n\n[FILE]\n" + await file.text();
-    document.getElementById("file").value="";
-  }
-
-  add(content || "[Image sent]", "user");
-  history.push({ role:"user", content });
-
-  const aiDiv=add("", "ai");
-
-  const res = await fetch(workerUrl, {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({ history, image })
-  });
-
-  const reader=res.body.getReader();
-  const decoder=new TextDecoder();
-  let text="";
-
-  while(true){
-    const {value,done}=await reader.read();
-    if(done) break;
-    text+=decoder.decode(value);
-    aiDiv.textContent=text;
-  }
-
-  history.push({ role:"assistant", content:text });
-  input.value="";
-}
-
-function toggle(){ document.body.classList.toggle("dark"); }
-</script>
+  <script src="script.js"></script>
 </body>
 </html>
