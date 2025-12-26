@@ -4,57 +4,88 @@ const messages = document.getElementById("messages");
 const input = document.getElementById("input");
 const fileInput = document.getElementById("file");
 const imageInput = document.getElementById("image");
+const sendBtn = document.getElementById("send");
+const toggleBtn = document.getElementById("toggle");
 
 let history = [];
+let sending = false;
 
 function addMessage(text, cls) {
   const div = document.createElement("div");
   div.className = `msg ${cls}`;
   div.textContent = text;
   messages.appendChild(div);
-  div.scrollIntoView();
+  div.scrollIntoView({ behavior: "smooth" });
+  return div;
 }
 
 async function send() {
+  if (sending) return;
+
   let content = input.value.trim();
+  const file = fileInput.files[0];
+  const image = imageInput.files[0];
 
-  if (!content && !fileInput.files[0] && !imageInput.files[0]) return;
+  if (!content && !file && !image) return;
 
-  if (fileInput.files[0]) {
-    content += "\n\n[FILE]\n" + await fileInput.files[0].text();
+  sending = true;
+
+  if (file) {
+    content += "\n\n[FILE]\n" + await file.text();
     fileInput.value = "";
   }
 
   addMessage(content || "[Image sent]", "user");
   history.push({ role: "user", content });
 
-  const aiDiv = document.createElement("div");
-  aiDiv.className = "msg ai";
-  messages.appendChild(aiDiv);
+  const aiDiv = addMessage("", "ai");
 
-  const res = await fetch(workerUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ history })
-  });
+  try {
+    const res = await fetch(workerUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ history })
+    });
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let text = "";
+    if (!res.body) {
+      aiDiv.textContent = "⚠️ No response from server";
+      sending = false;
+      return;
+    }
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    text += decoder.decode(value);
-    aiDiv.textContent = text;
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let text = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      text += decoder.decode(value, { stream: true });
+      aiDiv.textContent = text;
+    }
+
+    history.push({ role: "assistant", content: text });
+  } catch (err) {
+    aiDiv.textContent = "❌ Error connecting to AI service";
+    console.error(err);
   }
 
-  history.push({ role: "assistant", content: text });
   input.value = "";
+  sending = false;
 }
 
-document.getElementById("send").addEventListener("click", send);
+/* ✅ CLICK SEND */
+sendBtn.addEventListener("click", send);
 
-document.getElementById("toggle").addEventListener("click", () => {
+/* ✅ ENTER KEY SUPPORT */
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    send();
+  }
+});
+
+/* ✅ DARK MODE TOGGLE */
+toggleBtn.addEventListener("click", () => {
   document.body.classList.toggle("dark");
 });
