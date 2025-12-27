@@ -1,48 +1,43 @@
-const chatInput = document.getElementById("chat-input");
-const sendButton = document.getElementById("send-button");
-const chatOutput = document.getElementById("chat-output");
+document.addEventListener("DOMContentLoaded", () => {
+  const chat = document.getElementById("chat");
+  const input = document.getElementById("message");
+  const sendBtn = document.getElementById("send");
 
-const WORKER_URL = "https://personalai.abdulmmm556.workers.dev/"; // Your Worker URL
+  sendBtn.addEventListener("click", sendMessage);
 
-// Function to append messages to chat
-function appendMessage(role, text) {
-  const message = document.createElement("div");
-  message.className = `chat-message ${role}`;
-  message.textContent = `${role}: ${text}`;
-  chatOutput.appendChild(message);
-  chatOutput.scrollTop = chatOutput.scrollHeight;
-}
-
-// Send message to Worker
-async function sendMessage() {
-  const message = chatInput.value.trim();
-  if (!message) return;
-
-  appendMessage("User", message);
-  chatInput.value = "";
-  
-  try {
-    const response = await fetch(WORKER_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ history: [{ role: "user", content: message }] })
-    });
-
-    if (!response.ok) {
-      appendMessage("Error", `Worker returned ${response.status}: ${response.statusText}`);
-      return;
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      sendMessage();
     }
+  });
 
-    const text = await response.text();
-    appendMessage("AI", text);
-  } catch (err) {
-    appendMessage("Error", "Failed to connect to AI service.");
-    console.error(err);
+  async function sendMessage() {
+    const text = input.value.trim();
+    if (!text) return;
+
+    appendMessage("You", text, "user");
+    input.value = "";
+
+    try {
+      const res = await fetch("https://personalai.abdulmmm556.workers.dev/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text })
+      });
+
+      const data = await res.json();
+      appendMessage("AI", data.choices[0].message.content, "ai");
+
+    } catch {
+      appendMessage("AI", "Error: Failed to connect.", "ai");
+    }
   }
-}
 
-// Event listeners
-sendButton.addEventListener("click", sendMessage);
-chatInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") sendMessage();
+  function appendMessage(sender, text, cls) {
+    const div = document.createElement("div");
+    div.className = cls;
+    div.textContent = `${sender}: ${text}`;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
 });
