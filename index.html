@@ -2,20 +2,51 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Personal AI</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Personal AI Chat</title>
+  <style>
+    body { background: #111; color: #eee; font-family: Arial; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+    #chatOutput { width: 80%; height: 400px; overflow-y: auto; background: #222; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
+    #userInput { width: 70%; padding: 10px; }
+    #sendBtn { padding: 10px; }
+  </style>
 </head>
 <body>
-  <div class="chat-container">
-    <div id="chat-output" class="chat-output"></div>
-    <div class="input-container">
-      <input type="text" id="chat-input" placeholder="Type your message...">
-      <button id="send-button">Send</button>
-    </div>
-  </div>
+  <h2>Personal AI Chat</h2>
+  <div id="chatOutput"></div>
+  <input id="userInput" placeholder="Type your message..." />
+  <button id="sendBtn">Send</button>
 
-  <!-- Load external JS (CSP-safe) -->
-  <script src="script.js"></script>
+  <script>
+    const workerURL = "https://personalai.abdulmmm556.workers.dev"; // Your Worker URL
+
+    const input = document.getElementById("userInput");
+    const btn = document.getElementById("sendBtn");
+    const output = document.getElementById("chatOutput");
+
+    btn.addEventListener("click", async () => {
+      const message = input.value.trim();
+      if (!message) return;
+
+      output.innerHTML += `<b>User:</b> ${message}<br/>`;
+
+      try {
+        const res = await fetch(workerURL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ history: [{ role: "user", content: message }] })
+        });
+
+        const data = await res.json();
+        const reply = data.choices[0]?.message?.content || "No reply";
+        output.innerHTML += `<b>AI:</b> ${reply}<br/>`;
+        output.scrollTop = output.scrollHeight;
+      } catch (err) {
+        output.innerHTML += `<b>Error:</b> Failed to connect to AI service.<br/>`;
+        console.error(err);
+      }
+
+      input.value = "";
+    });
+  </script>
 </body>
 </html>
