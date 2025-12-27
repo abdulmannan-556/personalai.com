@@ -1,91 +1,48 @@
-const workerUrl = "https://personalai.abdulmmm556.workers.dev/";
+const chatInput = document.getElementById("chat-input");
+const sendButton = document.getElementById("send-button");
+const chatOutput = document.getElementById("chat-output");
 
-const messages = document.getElementById("messages");
-const input = document.getElementById("input");
-const fileInput = document.getElementById("file");
-const imageInput = document.getElementById("image");
-const sendBtn = document.getElementById("send");
-const toggleBtn = document.getElementById("toggle");
+const WORKER_URL = "https://personalai.abdulmmm556.workers.dev/"; // Your Worker URL
 
-let history = [];
-let sending = false;
-
-function addMessage(text, cls) {
-  const div = document.createElement("div");
-  div.className = `msg ${cls}`;
-  div.textContent = text;
-  messages.appendChild(div);
-  div.scrollIntoView({ behavior: "smooth" });
-  return div;
+// Function to append messages to chat
+function appendMessage(role, text) {
+  const message = document.createElement("div");
+  message.className = `chat-message ${role}`;
+  message.textContent = `${role}: ${text}`;
+  chatOutput.appendChild(message);
+  chatOutput.scrollTop = chatOutput.scrollHeight;
 }
 
-async function send() {
-  if (sending) return;
+// Send message to Worker
+async function sendMessage() {
+  const message = chatInput.value.trim();
+  if (!message) return;
 
-  let content = input.value.trim();
-  const file = fileInput.files[0];
-  const image = imageInput.files[0];
-
-  if (!content && !file && !image) return;
-
-  sending = true;
-
-  if (file) {
-    content += "\n\n[FILE]\n" + await file.text();
-    fileInput.value = "";
-  }
-
-  addMessage(content || "[Image sent]", "user");
-  history.push({ role: "user", content });
-
-  const aiDiv = addMessage("", "ai");
-
+  appendMessage("User", message);
+  chatInput.value = "";
+  
   try {
-    const res = await fetch(workerUrl, {
+    const response = await fetch(WORKER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ history })
+      body: JSON.stringify({ history: [{ role: "user", content: message }] })
     });
 
-    if (!res.body) {
-      aiDiv.textContent = "⚠️ No response from server";
-      sending = false;
+    if (!response.ok) {
+      appendMessage("Error", `Worker returned ${response.status}: ${response.statusText}`);
       return;
     }
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let text = "";
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      text += decoder.decode(value, { stream: true });
-      aiDiv.textContent = text;
-    }
-
-    history.push({ role: "assistant", content: text });
+    const text = await response.text();
+    appendMessage("AI", text);
   } catch (err) {
-    aiDiv.textContent = "❌ Error connecting to AI service";
+    appendMessage("Error", "Failed to connect to AI service.");
     console.error(err);
   }
-
-  input.value = "";
-  sending = false;
 }
 
-/* ✅ CLICK SEND */
-sendBtn.addEventListener("click", send);
-
-/* ✅ ENTER KEY SUPPORT */
-input.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    send();
-  }
-});
-
-/* ✅ DARK MODE TOGGLE */
-toggleBtn.addEventListener("click", () => {
-  document.body.classList.toggle("dark");
+// Event listeners
+sendButton.addEventListener("click", sendMessage);
+chatInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") sendMessage();
 });
