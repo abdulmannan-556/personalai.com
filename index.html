@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Personal AI Chat</title>
   <style>
-    body { background: #111; color: #eee; font-family: Arial; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+    body { font-family: Arial; background: #111; color: #eee; display: flex; flex-direction: column; align-items: center; padding: 20px; }
     #chatOutput { width: 80%; height: 400px; overflow-y: auto; background: #222; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
     #userInput { width: 70%; padding: 10px; }
     #sendBtn { padding: 10px; }
@@ -17,35 +17,45 @@
   <button id="sendBtn">Send</button>
 
   <script>
-    const workerURL = "https://personalai.abdulmmm556.workers.dev"; // Your Worker URL
+    const workerURL = "https://personalai.abdulmmm556.workers.dev"; // Replace with your Worker URL
+    const chatOutput = document.getElementById("chatOutput");
+    const userInput = document.getElementById("userInput");
+    const sendBtn = document.getElementById("sendBtn");
 
-    const input = document.getElementById("userInput");
-    const btn = document.getElementById("sendBtn");
-    const output = document.getElementById("chatOutput");
+    const conversation = [];
 
-    btn.addEventListener("click", async () => {
-      const message = input.value.trim();
+    async function sendMessage() {
+      const message = userInput.value.trim();
       if (!message) return;
 
-      output.innerHTML += `<b>User:</b> ${message}<br/>`;
+      conversation.push({ role: "user", content: message });
+      chatOutput.innerHTML += `<b>You:</b> ${message}<br/>`;
+
+      userInput.value = "";
+      chatOutput.scrollTop = chatOutput.scrollHeight;
 
       try {
         const res = await fetch(workerURL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ history: [{ role: "user", content: message }] })
+          body: JSON.stringify({ history: conversation })
         });
 
         const data = await res.json();
-        const reply = data.choices[0]?.message?.content || "No reply";
-        output.innerHTML += `<b>AI:</b> ${reply}<br/>`;
-        output.scrollTop = output.scrollHeight;
+        const reply = data.choices?.[0]?.message?.content || "No reply";
+
+        conversation.push({ role: "assistant", content: reply });
+        chatOutput.innerHTML += `<b>AI:</b> ${reply}<br/>`;
+        chatOutput.scrollTop = chatOutput.scrollHeight;
       } catch (err) {
-        output.innerHTML += `<b>Error:</b> Failed to connect to AI service.<br/>`;
+        chatOutput.innerHTML += `<b>Error:</b> Failed to connect to AI service.<br/>`;
         console.error(err);
       }
+    }
 
-      input.value = "";
+    sendBtn.addEventListener("click", sendMessage);
+    userInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
     });
   </script>
 </body>
